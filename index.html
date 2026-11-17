@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Suraj Vishal Photography">
 <meta property="og:description" content="Candid wedding, haldi, mehndi, portrait and fashion photography by Suraj Vishal.">
-<meta property="og:image" content="https://surajvishal-photography.github.io/wedding.jpg">
+<meta property="og:image" content="https://surajvishal-photography.github.io/banner.jpg">
 <meta name="twitter:card" content="summary_large_image">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Great+Vibes&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <script type="application/ld+json">
@@ -42,10 +42,8 @@ header.top{text-align:center;padding:2rem 0 1.5rem}
 nav ul{display:flex;justify-content:center;gap:2rem;list-style:none;margin:0;padding:0}
 nav a{text-decoration:none;color:var(--muted);font-weight:500;font-size:.95rem;padding:.25rem 0}
 nav a:hover{color:var(--ink);box-shadow:0 1px 0 var(--ink)}
-.hero{position:relative;margin-top:.5rem;aspect-ratio:16/8;min-height:260px;overflow:hidden;border-radius:2px;background:var(--slot)}
-.hero img{width:100%;height:100%;object-fit:cover;object-position:center 30%;display:block}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.6),rgba(0,0,0,0) 55%)}
-.hero span{position:absolute;z-index:1;left:1.5rem;bottom:1.25rem;font-family:var(--serif);font-size:clamp(1.5rem,4vw,2.4rem);line-height:1.2;color:#fff;max-width:22ch}
+.hero{position:relative;margin-top:.5rem;aspect-ratio:16/9;overflow:hidden;border-radius:2px;background:var(--slot)}
+.hero img{width:100%;height:100%;object-fit:cover;object-position:center;display:block}
 section{padding:4rem 0 1rem}
 h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.8rem,4vw,2.4rem);line-height:1.15;margin:0 0 1.25rem}
 .filters{display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
@@ -86,8 +84,7 @@ footer{margin-top:4rem;padding:1.5rem 0 2.5rem;border-top:1px solid var(--line);
   </header>
 
   <div class="hero">
-    <img src="wedding.jpg" alt="Candid wedding photo of a bride and groom by Suraj Vishal">
-    <span>Real moments, beautifully kept.</span>
+    <img src="banner.jpg" alt="Suraj Vishal Photography banner: photographer shooting a sunset over the hills" width="1672" height="940">
   </div>
 
   <section id="work">
@@ -134,13 +131,53 @@ footer{margin-top:4rem;padding:1.5rem 0 2.5rem;border-top:1px solid var(--line);
 
 <script>
 (function(){
-  var grid=document.getElementById('grid');
-  document.getElementById('filters').addEventListener('click',function(e){
+  var grid=document.getElementById('grid'),empty=document.getElementById('empty'),filters=document.getElementById('filters');
+  var cur='all';
+  function apply(){
+    var n=0;
+    grid.querySelectorAll('.tile').forEach(function(t){
+      var h=(cur!=='all'&&t.dataset.cat!==cur);t.hidden=h;if(!h)n++;
+    });
+    empty.hidden=n>0;
+  }
+  filters.addEventListener('click',function(e){
     var b=e.target.closest('button');if(!b)return;
-    this.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
-    var f=b.dataset.f;
-    var n=0;grid.querySelectorAll('.tile').forEach(function(t){var h=(f!=='all'&&t.dataset.cat!==f);t.hidden=h;if(!h)n++});document.getElementById('empty').hidden=n>0;
+    filters.querySelectorAll('button').forEach(function(x){x.setAttribute('aria-pressed',x===b)});
+    cur=b.dataset.f;apply();
   });
+
+  /* Auto gallery: photos/<Category>/<koi bhi naam>.jpg  YA  <category>-<naam>.jpg */
+  var CATS={wedding:'Wedding',night:'Night',portrait:'Portrait',nature:'Nature',street:'Street',monuments:'Monuments'};
+  var API='https://api.github.com/repos/surajvishal-photography/surajvishal-photography.github.io/git/trees/main?recursive=1';
+  function addPhotos(paths){
+    paths.sort(function(a,b){return a.localeCompare(b,undefined,{numeric:true})});
+    paths.forEach(function(path){
+      var m=/^photos\/([^\/]+)\/[^\/]+\.(jpe?g|png|webp)$/i.exec(path)||/^([a-z]+)-[^\/]+\.(jpe?g|png|webp)$/i.exec(path);
+      if(!m||!CATS[m[1].toLowerCase()])return;
+      var cat=CATS[m[1].toLowerCase()];
+      var t=document.createElement('button');
+      t.className='tile';t.dataset.cat=cat;t.setAttribute('aria-label','Open '+cat.toLowerCase()+' photo');
+      var im=document.createElement('img');
+      im.src=path.split('/').map(encodeURIComponent).join('/');
+      im.alt=cat+' photo by Suraj Vishal';im.loading='lazy';
+      im.onerror=function(){t.remove();apply()};
+      t.appendChild(im);grid.appendChild(t);
+    });
+    apply();
+  }
+  var cached=null;
+  try{cached=JSON.parse(sessionStorage.getItem('gal2'))}catch(e){}
+  if(cached&&Date.now()-cached.t<600000){addPhotos(cached.paths)}
+  else{
+    fetch(API,{headers:{'Accept':'application/vnd.github+json'}})
+      .then(function(r){return r.ok?r.json():Promise.reject()})
+      .then(function(d){
+        var paths=(d.tree||[]).filter(function(i){return i.type==='blob'}).map(function(i){return i.path});
+        try{sessionStorage.setItem('gal2',JSON.stringify({t:Date.now(),paths:paths}))}catch(e){}
+        addPhotos(paths);
+      }).catch(function(){});
+  }
+
   var lb=document.getElementById('lb'),lbimg=document.getElementById('lbimg');
   grid.addEventListener('click',function(e){
     var t=e.target.closest('.tile');if(!t)return;
